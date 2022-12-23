@@ -8,16 +8,21 @@ async function sqlQuery(connectionString, query) {
     return result;
   } catch (err) {
     console.log(err);
+    return result;
   }
 }
-
+//TODO: Correct error handling to prevent API crash
 exports.getTables = async (req, res) => {
   let connectionString = req.query.connectionString;
   let query = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' 
         AND TABLE_NAME NOT LIKE 'DBA/_/_%' ESCAPE '/'
         AND TABLE_NAME LIKE 'DBA/_%' ESCAPE '/'`;
   result = await sqlQuery(connectionString, query);
-  result = result.recordset;
+  if (result.recordset) {
+    result = result.recordset;
+  } else {
+    result = result.message;
+  }
   res.send(result);
 
   // result = await sqlConnect(connectionString);
