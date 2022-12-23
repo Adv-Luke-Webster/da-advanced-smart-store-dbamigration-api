@@ -1,0 +1,76 @@
+{
+	"info": {
+		"_postman_id": "0cc3df47-d875-4c4b-9e43-f337767fa4e4",
+		"name": "da-advanced-smart-stor-dba-migration-api",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "10376946"
+	},
+	"item": [
+		{
+			"name": "dbConnect",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3332/api/dbConnect?connectionString=Server=v1-win2k19se;Database=DbArchive;User Id=v1user;Password=v1user;Encrypt=true;trustServerCertificate=true",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3332",
+					"path": [
+						"api",
+						"dbConnect"
+					],
+					"query": [
+						{
+							"key": "connectionString",
+							"value": "Server=v1-win2k19se;Database=DbArchive;User Id=v1user;Password=v1user;Encrypt=true;trustServerCertificate=true"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "dbDisConnect",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3332/api/dbDisConnect",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3332",
+					"path": [
+						"api",
+						"dbDisConnect"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getTables",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3332/api/getTables",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3332",
+					"path": [
+						"api",
+						"getTables"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
