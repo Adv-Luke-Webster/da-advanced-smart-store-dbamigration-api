@@ -1,3 +1,4 @@
+const { badRequest, ok } = require("../HttpHandlers/responseBuilder");
 const sql = require("mssql");
 
 async function sqlQuery(connectionString, query) {
@@ -11,24 +12,23 @@ async function sqlQuery(connectionString, query) {
     return result;
   }
 }
-//TODO: Correct error handling to prevent API crash
-exports.getTables = async (req, res) => {
-  let connectionString = req.query.connectionString;
-  let query = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' 
-        AND TABLE_NAME NOT LIKE 'DBA/_/_%' ESCAPE '/'
-        AND TABLE_NAME LIKE 'DBA/_%' ESCAPE '/'`;
-  result = await sqlQuery(connectionString, query);
+
+function constructRetrievedResponse(result) {
   if (result.recordset) {
-    result = result.recordset;
+    return ok(result.recordset);
   } else {
     result = result.message;
+    return badRequest(result);
   }
-  res.send(result);
+}
 
-  // result = await sqlConnect(connectionString);
-  // if(result._connected){
-  //   res.send(result._connected);
-  // } else {
-  //   res.send(result.message)
-  // }
+exports.getTables = async (req, res) => {
+  if (req.query.connectionString) {
+    let connectionString = req.query.connectionString;
+    let query = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' 
+        AND TABLE_NAME NOT LIKE 'DBA/_/_%' ESCAPE '/'
+        AND TABLE_NAME LIKE 'DBA/_%' ESCAPE '/'`;
+    result = await sqlQuery(connectionString, query);
+    res.send(constructRetrievedResponse(result));
+  }
 };
