@@ -1,9 +1,13 @@
 const { badRequest, ok } = require("../HttpHandlers/responseBuilder");
 const sql = require("mssql");
+const oracle = require("oracledb");
+const { Sequelize } = require("sequelize");
 
-async function sqlConnect(connectionString) {
+async function sqlConnect(connectionString, databaseType) {
   try {
-    const result = await sql.connect(connectionString);
+    const sequelize = new Sequelize(`${connectionString}`);
+    const result = await sequelize.authenticate();
+    console.log("Connection has been established successfully.");
     return result;
   } catch (err) {
     console.log(err);
@@ -30,7 +34,8 @@ function constructRetrievedResponse(result) {
 
 exports.dbConnect = async (req, res) => {
   let connectionString = req.query.connectionString;
-  result = await sqlConnect(connectionString);
+  let databaseType = req.query.databaseType;
+  result = await sqlConnect(connectionString, databaseType);
   res.send(constructRetrievedResponse(result));
 };
 
