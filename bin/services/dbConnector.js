@@ -6,9 +6,11 @@ const { Sequelize } = require("sequelize");
 async function sqlConnect(connectionString, databaseType) {
   try {
     const sequelize = new Sequelize(`${connectionString}`);
-    const result = await sequelize.authenticate();
-    console.log("Connection has been established successfully.");
-    return result;
+    await sequelize.authenticate().then(() => {
+      let result = true;
+      console.log("Connection has been established successfully.");
+      return result;
+    });
   } catch (err) {
     console.log(err);
     return err;
