@@ -4,33 +4,45 @@ const oracle = require("oracledb");
 const { Sequelize } = require("sequelize");
 
 async function sqlConnect(connectionString, databaseType) {
+  let result;
   try {
     const sequelize = new Sequelize(`${connectionString}`);
     await sequelize.authenticate().then(() => {
-      let result = true;
-      console.log("Connection has been established successfully.");
-      return result;
+      result = true;
     });
   } catch (err) {
     console.log(err);
     return err;
   }
+  return result;
+}
+
+async function sqlDisConnect(connectionString, databaseType) {
+  let result;
+  try {
+    const sequelize = new Sequelize(`${connectionString}`);
+    await sequelize.close().then(() => {
+      result = false;
+    });
+  } catch (err) {
+    console.log(err);
+    return err;
+  }
+  return result;
 }
 
 function constructRetrievedResponse(result) {
-  if (result._connected) {
-    result = result._connected;
+  if (result === true) {
     return ok({
       data: result,
     });
-  } else if (result._connected === false) {
-    result = result._connected;
+  } else if (result === false) {
     return ok({
       data: result,
     });
   } else {
     result = result.message;
-    return badRequest(result);
+    return badRequest("Request is bad", result);
   }
 }
 
@@ -38,10 +50,20 @@ exports.dbConnect = async (req, res) => {
   let connectionString = req.query.connectionString;
   let databaseType = req.query.databaseType;
   result = await sqlConnect(connectionString, databaseType);
-  res.send(constructRetrievedResponse(result));
+  if (result === true) {
+    res.send(constructRetrievedResponse(result));
+  } else {
+    res.status(400).send(badRequest(result.message));
+  }
 };
 
 exports.dbDisConnect = async (req, res) => {
-  const result = await sql.close();
-  res.send(constructRetrievedResponse(result));
+  let connectionString = req.query.connectionString;
+  let databaseType = req.query.databaseType;
+  result = await sqlDisConnect(connectionString, databaseType);
+  if (result === false) {
+    res.send(constructRetrievedResponse(result));
+  } else {
+    res.status(400).send(badRequest(result.message));
+  }
 };
