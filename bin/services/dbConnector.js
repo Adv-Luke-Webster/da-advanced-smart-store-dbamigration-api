@@ -48,7 +48,7 @@ function constructRetrievedResponse(result) {
 
 exports.dbConnect = async (req, res) => {
   let connectionString = req.query.connectionString;
-  let databaseType = req.query.databaseType;
+  let databaseType = req.query.databaseType.databaseType;
   result = await sqlConnect(connectionString, databaseType);
   if (result === true) {
     res.send(constructRetrievedResponse(result));
