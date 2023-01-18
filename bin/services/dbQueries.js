@@ -25,7 +25,7 @@ function constructRetrievedResponse(result) {
 exports.getTables = async (req, res) => {
   if (req.query.connectionString) {
     let connectionString = req.query.connectionString;
-    let databaseType = req.query.databaseType.databaseType;
+    let databaseType = req.query.databaseType;
     let query;
     if (databaseType === "mssql") {
       query = `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' 
