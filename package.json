@@ -13,9 +13,22 @@
     "express": "~4.16.1",
     "http-errors": "~1.6.3",
     "jade": "~1.11.0",
+    "jdbc": "^0.7.6",
     "morgan": "~1.9.1",
     "mssql": "^9.0.1",
     "oracledb": "^5.5.0",
     "sequelize": "^6.28.0"
-  }
+  },
+  "description": "<h1># da-advanced-smart-store-dbamigration-api</h1>",
+  "main": "app.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Adv-Luke-Webster/da-advanced-smart-store-dbamigration-api.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Adv-Luke-Webster/da-advanced-smart-store-dbamigration-api/issues"
+  },
+  "homepage": "https://github.com/Adv-Luke-Webster/da-advanced-smart-store-dbamigration-api#readme"
 }

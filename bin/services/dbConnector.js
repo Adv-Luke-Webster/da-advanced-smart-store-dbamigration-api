@@ -2,6 +2,26 @@ const { badRequest, ok } = require("../HttpHandlers/responseBuilder");
 const sql = require("mssql");
 const oracle = require("oracledb");
 const { Sequelize } = require("sequelize");
+const JDBC = require('jdbc');
+const jinst = require('jdbc/lib/jinst')
+
+if(!jinst.isJvmCreated()){
+  jinst.addOption("-Xrs");
+  jinst.setupClasspath(["../drivers/mssql-jdbc-11.2.3.jre8.jar"]);
+}
+var config = {
+  url: 'jdbc:sqlserver://v1-win2k19se;DatabaseName=DbArchive;encrypt=true;integratedSecurity=true',
+  drivername: 'com.microsoft.sqlserver.jdbc.SQLServerDriver',
+  minpoolsize: 1,
+  maxpoolsize: 100,
+  properties: {}
+};
+var dbArchiveDb = new JDBC(config);
+
+dbArchiveDb.initialize(function(err){
+  if(err){console.log(err);
+  }
+});
 
 async function sqlConnect(connectionString, databaseType) {
   let result;
