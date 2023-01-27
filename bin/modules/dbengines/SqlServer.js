@@ -11,13 +11,13 @@ const path = require('path');
 //const chalk = require("chalk");
 var log;
 
-const sql = require("mssql");
+const mssql = require("mssql");
 
 var sqlTypes = require('../../modules/dbengines/SqlDataTypes.js').sqlTypes;
 
 if (_.isUndefined(log)) {
     //log = logger.setUpLogs(config, path.join(__dirname, "..", "..", "..", "logs"));
-    console.log("TOD: add logger backc in")
+    console.log("TODO: add logger back in")
 }
 
 var initialised = false,
@@ -28,60 +28,90 @@ function isInitialised() {
     return initialised;
 }
 
-function init(instance) {
-
-    var deferred = q.defer();
-
+function init(connString) {
+    let connObject = connString.split(";");
     try {
         // Structure of jdbc connection string for SQL Server
         // jdbc:sqlserver://[serverName[\instanceName][:portNumber]][;property=value[;property=value]]
         // This should have a property like: databaseName=DbArchive;
-        var aBits1 = instance.jdbcURL.split(";"); //splits off the extra properties, if any
-        if (instance.jdbcURL.substr(0, 17) != 'jdbc:sqlserver://')
-        {
-            deferred.reject({ message: "The JDBC connection string is not valid for SQL Server"})
-        }
-        
-        connConfig = {
-            user: instance.jdbcUser,
-            password: instance.jdbcPass,
-            options: {
-                appName: 'NIS'
-                //useColumnNames: true
-            },
-            pool: {
-                min: instance.sqlConnectionPoolMin ? instance.sqlConnectionPoolMin : 3,
-                max: instance.sqlConnectionPoolMax ? instance.sqlConnectionPoolMax : 50
+        let _db;
+        let _server;
+        let _intergratedSecurity;
+        let _username;
+        let _password;
+
+        if (_.isString(connString)) {
+            jdbcBits = connString.split(":");
+            let engine = jdbcBits.length > 1 ? jdbcBits[1] : "";
+            
+
+            if(engine==="sqlserver"){
+                for(let i =0; i < connObject.length; i++){
+                    if(connObject[i].includes("databaseName")){
+                        _db = connObject[i].split("=")[1];
+                        console.log(_db);
+                    }
+                    if(connObject[i].includes("integratedSecurity")){
+                        _intergratedSecurity = connObject[i].split("=")[1];
+                        console.log(_intergratedSecurity);
+                        
+                    }
+                    if((connObject[i].includes("user")) || (connObject[i].includes("userName"))){
+                        _username = connObject[i].split("=")[1];
+                        console.log(_username);
+                        
+                    }
+                    if(connObject[i].includes("password")){
+                        _password = connObject[i].split("=")[1];
+                        console.log(_password);
+                        
+                    }
+                    if(connObject[i].includes("jdbc")){
+                        _server = connObject[i].split("//")[1];
+                        console.log(_server);
+                    }
+                }
             }
-            // , debug: {
-            //     packet: true,
-            //     data: true,
-            //     payload: true,
-            //     token: false,
-            //     log: true
-            // }
         }
 
-        var location = aBits1[0].substr(17); // = "[serverName[\instanceName][:portNumber]]"
-        var ixBs = location.indexOf("\\");
-        if (ixBs >= 0) {
-            connConfig.server = location.substr(0, ixBs);
-            connConfig.options.instanceName = location.substr(ixBs+1);
+        if (connString.substr(0, 17) != 'jdbc:sqlserver://')
+        {
+            return({ message: "The JDBC connection string is not valid for SQL Server"})
+        }
+
+        
+        connConfig = {
+            user: _username,
+            password: _password,
+            options: {
+            },
+            pool: {
+                min:  3,
+                max:  50
+            }
+        }
+
+        let location = connString.substr(17).split(";")[0]; // = "[serverName[\instanceName][:portNumber]]"
+        let instance = location.indexOf("\\");
+        if (instance >= 0) {
+            connConfig.server = location.substr(0, instance);
+            connConfig.options.instanceName = location.substr(instance+1);
         }
         else {
-            var ixCl = location.indexOf(":");
-            if (ixCl >= 0) {
-                connConfig.server = location.substr(0, ixCl);
-                connConfig.port = location.substr(ixCl+1);
+            let portNumber = location.indexOf(":");
+            if (portNumber >= 0) {
+                connConfig.server = location.substr(0, portNumber);
+                connConfig.port = location.substr(portNumber+1);
             }
             else {
                 connConfig.server = location;
             }
         }
 
-        for (var i = 1; i < aBits1.length; i++) {
-            if (aBits1[i]) {
-                var nvp = aBits1[i].split("=");
+        for (var i = 1; i < connObject.length; i++) {
+            if (connObject[i]) {
+                let nvp = connObject[i].split("=");
+                let boolValue;
                 if (nvp && nvp.length == 2) {
                     switch (nvp[0].toLowerCase()) {
                         case "databasename":
@@ -94,6 +124,16 @@ function init(instance) {
                         case "instancename":
                             connConfig.options.instanceName = nvp[1];
                             break;
+                        case "encrypt":
+                            boolValue = nvp[1]
+                            connConfig.options.encrypt = (boolValue === nvp[1]);
+                            break;
+                        case "trustservercertificate":
+                            boolValue = nvp[1];
+                            connConfig.options.trustServerCertificate = (boolValue === nvp[1]);
+
+                            break;                            
+
                         case "integratedsecurity":
                             if (nvp[1].toLowerCase() == "true") {
                                 connConfig.options.trustedConnection = true;
@@ -108,47 +148,24 @@ function init(instance) {
 
         if (!initialised) {
             initialised = true;
-            log.info(chalk.blue("Connecting to SQL Server..."));
+            //log.info(chalk.blue("Connecting to SQL Server..."));
             
-            pool = new sql.ConnectionPool(connConfig);
-            
-            pool.on('error', function(err) {                
-                log.error(chalk.red("Error in SQL Serverr Connection Pool:"));
-                log.error(chalk.red(err));
-            });
-
-            pool.connect(function(err) {
-                if (err) {   
-                    initialised = false;
-                    deferred.reject(err);
-                    log.error(chalk.red("Error connecting to SQL Server:"));
-                    log.error(chalk.red(err));
-                } 
-                else {
-                    deferred.resolve();  
-                    log.info(chalk.blue("SQL Server connection established."));
-                }       
-            });
-            // sql.connect(connConfig, function(err) {
-            //     if (err) {   
-            //         initialised = false;
-            //         deferred.reject(err);
-            //         log.error(chalk.red("Error connecting to SQL Server:"));
-            //         log.error(chalk.red(err));
-            //     } 
-            //     else {
-            //         deferred.resolve();  
-            //         log.info(chalk.blue("SQL Server connection established."));
-            //     }       
-            // });
+            new mssql.ConnectionPool(connConfig)
+            .connect()
+            .then(pool => {
+                console.log('Connected')
+                return pool
+            })
+            .catch(err => console.log('Error..',err))
         }
     }
     catch(e) {
-        deferred.reject(e);
-        log.error(chalk.red("Error initialising SQL Server:"));
+       // deferred.reject(e);
+        //log.error(chalk.red("Error initialising SQL Server:"));
+        console.log("err")
     }
 
-    return deferred.promise;
+    return pool;
 }
 
 function initConnection() {

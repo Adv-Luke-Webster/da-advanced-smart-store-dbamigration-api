@@ -3,14 +3,22 @@ const { Sequelize } = require("sequelize");
 const _ = require("underscore")
 const statements = require("../modules/sqlStatements")
 var archiveSQL = require("../modules/archiveSQL.js");
+const { init } = require("../modules/dbengines/SqlServer");
 
 async function sqlConnect(connectionString, databaseType) {
   let driverToUse;
   let connected;
   if(connectionString){
     driverToUse = await archiveSQL.getDb(connectionString);
+    if(_.isUndefined(driverToUse.engineDetails)){
+      //Add logger back in
+    }
+    else{
+      console.log(driverToUse.engineDetails)
+      await driverToUse.init(connectionString)
+      console.log("STOPPED")
+    }
     
-    console.log(driverToUse.engineDetails)
   }
   let result;
   try {

@@ -2,3 +2,5 @@ MSSql conn string: Server=v1-win2k19se;Database=DbArchive;User Id=1v1user;Passwo
 Sequelize MSSQL: mssql://v1user:v1user@v1-win2k19se/DbArchive
 Oracle conn string: user: "DBARCHIVE", password: "Passw0rd", connectionString: "10.33.9.52/ORCL.ACS.ACSRRESOURCE.COM"
 Sequelize Oracle: oracle://DbARCHIVE:Passw0rd@10.33.9.52/ORCL.ACS.ACSRESOURCE.COM
+JDBC Oracle: jdbc:oracle:thin:DbArchive/Passw0rd@10.33.9.52/ORCL.ACS.ACSRESOURCE.COM
+JDBC MS SQL: jdbc:sqlserver://V1-WIN2K19SE;databaseName=DbArchive;integratedSecurity=true

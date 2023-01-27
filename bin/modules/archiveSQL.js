@@ -23,30 +23,39 @@ function getDb(ct) {
     let _db;
     let _server;
     let _intergratedSecurity;
-    //var deferred = q.defer();
+    let _username;
+    let _password;
 
-    // ct is either a connection token, or it is just the name of the database instance (this is used by background tasks)
-    let instanceName2 = "~~~~"; 
-    let instance = null;
     if (_.isString(ct)) {
         jdbcBits = ct.split(":");
         let engine = jdbcBits.length > 1 ? jdbcBits[1] : "";
         let connObject = ct.split(";");
 
-
-        for(let i =0; i < connObject.length; i++){
-            if(connObject[i].includes("databaseName")){
-                _db = connObject[i].split("=")[1];
-                console.log(_db);
-            }
-            if(connObject[i].includes("integratedSecurity")){
-                _intergratedSecurity = connObject[i].split("=")[1];
-                console.log(_intergratedSecurity);
-                
-            }
-            if(connObject[i].includes("jdbc")){
-                _server = connObject[i].split("//")[1];
-                console.log(_server);
+        if(engine==="sqlserver"){
+            for(let i =0; i < connObject.length; i++){
+                if(connObject[i].includes("databaseName")){
+                    _db = connObject[i].split("=")[1];
+                    console.log(_db);
+                }
+                if(connObject[i].includes("integratedSecurity")){
+                    _intergratedSecurity = connObject[i].split("=")[1];
+                    console.log(_intergratedSecurity);
+                    
+                }
+                if((connObject[i].includes("user")) || (connObject[i].includes("userName"))){
+                    _username = connObject[i].split("=")[1];
+                    console.log(_username);
+                    
+                }
+                if(connObject[i].includes("password")){
+                    _password = connObject[i].split("=")[1];
+                    console.log(_password);
+                    
+                }
+                if(connObject[i].includes("jdbc")){
+                    _server = connObject[i].split("//")[1];
+                    console.log(_server);
+                }
             }
         }
 
@@ -89,7 +98,7 @@ function getDb(ct) {
                 }
                 break;
             case "oracle":
-                if (_db) {
+                if (_.isUndefined(_db)) {
                     try {
                         _db = require("./dbengines/Oracle.js");
                     }

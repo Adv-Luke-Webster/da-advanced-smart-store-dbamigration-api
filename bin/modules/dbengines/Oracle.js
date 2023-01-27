@@ -36,7 +36,7 @@ function isInitialised() {
 
 function init(instance) {
 
-    var deferred = q.defer();
+    //var deferred = q.defer();
 
     try {
         // Some examples of jdbc connection strings for Oracle. 
@@ -50,10 +50,10 @@ function init(instance) {
         //                                                  (tnsnames.ora style syntax. Again, we can use directly.)
         // The general syntax of an easy connect string is:
         // [//]host_name[:port][/service_name][:server_type][/instance_name]
-        if (instance.jdbcURL.substr(0, 12) != 'jdbc:oracle:' || instance.jdbcURL.indexOf("@") < 0)
+        if (instance.substr(0, 12) !== 'jdbc:oracle:' || instance.indexOf("@") < 0)
         {
-            deferred.reject({ message: "The JDBC connection string is not valid for Oracle"});
-            return;
+            let result = ({ message: "The JDBC connection string is not valid for Oracle"});
+            return result;
         }
         
         /*
@@ -72,10 +72,15 @@ Number poolTimeout
 Boolean queueRequests
 Number queueTimeout
         */
+       let connBits = instance.split(":")[3];
+       let user = connBits.split("/")[0];
+       let password = connBits.split("/")[1];
+       password = password.split("@")[0];
+       let connString = connBits.split("@")[1];
         connConfig = {
-            user: instance.jdbcUser,
-            password: instance.jdbcPass,
-            connectString: instance.jdbcURL.split("@")[1],
+            user: user,
+            password: password,
+            connectString: connString,
             poolMin: (instance.sqlConnectionPoolMin || (instance.sqlConnectionPoolMin === 0)) ? instance.sqlConnectionPoolMin : 3,
             poolMax: instance.sqlConnectionPoolMax ? instance.sqlConnectionPoolMax : 50
         }
@@ -103,7 +108,7 @@ Number queueTimeout
         }
     }
     catch(e) {
-        deferred.reject(e);
+        //deferred.reject(e);
     }
 
     return deferred.promise;
