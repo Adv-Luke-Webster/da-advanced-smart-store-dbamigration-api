@@ -1,6 +1,6 @@
-const logger = require('./logProcessor.js')
+const logger = require('./logProcessor')
 const path = require('path')
-const config = require('../config.json')
+const config = require('../../config.json')
 const chalk = require('chalk')
 // Set logger module
 const logSetup = (configData) => {

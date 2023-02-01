@@ -1,85 +1,73 @@
-const { badRequest, ok } = require("../HttpHandlers/responseBuilder");
-const { Sequelize } = require("sequelize");
-const _ = require("underscore")
-const statements = require("../modules/sqlStatements")
-var archiveSQL = require("../modules/archiveSQL.js");
-const { init } = require("../modules/dbengines/SqlServer");
+const { badRequest, ok } = require('../HttpHandlers/responseBuilder')
+const _ = require('underscore')
+const archiveSQL = require('../modules/archiveSQL.js')
+const { result } = require('underscore')
+const log = require('../helper/logger')
+const chalk = require('chalk')
 
-async function sqlConnect(connectionString, databaseType) {
-  let driverToUse;
-  let connected;
-  if(connectionString){
-    driverToUse = await archiveSQL.getDb(connectionString);
-    if(_.isUndefined(driverToUse.engineDetails)){
-      //Add logger back in
-    }
-    else{
-      console.log(driverToUse.engineDetails)
-      await driverToUse.init(connectionString)
-      console.log("STOPPED")
-    }
-    
-  }
-  let result;
-  try {
-    const sequelize = new Sequelize(`${connectionString}`);
-    await sequelize.authenticate().then(() => {
-      result = true;
-    });
-  } catch (err) {
-    console.log(err);
-    return err;
-  }
-  return result;
+async function driverToUse (connectionString) {
+  this._driver = await archiveSQL.getDb(connectionString)
+  return this._driver
 }
 
-async function sqlDisConnect(connectionString, databaseType) {
-  let result;
-  try {
-    const sequelize = new Sequelize(`${connectionString}`);
-    await sequelize.close().then(() => {
-      result = false;
-    });
-  } catch (err) {
-    console.log(err);
-    return err;
-  }
-  return result;
+function sqlConnect (driverToUse, connectionString, action) {
+  return new Promise(async (resolve, reject) => {
+    if (connectionString) {
+      driverToUse.init(connectionString, action).then((success) => {
+        resolve(success)
+      }, (err) => {
+        reject(err)
+      })
+    } else {
+      // TODO: Add error no connection string
+      return false
+    }
+  })
 }
 
-function constructRetrievedResponse(result) {
+function constructRetrievedResponse (result) {
   if (result === true) {
     return ok({
-      data: result,
-    });
+      data: result
+    })
   } else if (result === false) {
     return ok({
-      data: result,
-    });
+      data: result
+    })
   } else {
-    result = result.message;
-    return badRequest("Request is bad", result);
+    result = result.message
+    return badRequest('Request is bad', result)
   }
 }
 
-exports.dbConnect = async (req, res) => {
-  let connectionString = req.query.connectionString;
-  let databaseType = req.query.databaseType.databaseType;
-  result = await sqlConnect(connectionString, databaseType);
-  if (result === true) {
-    res.send(constructRetrievedResponse(result));
-  } else {
-    res.status(400).send(badRequest(result.message));
-  }
-};
+exports.dbConnect = (req, res) => {
+  const connectionString = req.query.connectionString
+  const databaseType = req.query.databaseType.databaseType
+  driverToUse(connectionString, databaseType).then(async (result) => {
+    sqlConnect(result, connectionString, 'open').then((success) => {
+      if (success === true) {
+        res.send(constructRetrievedResponse(success))
+      } else {
+        res.status(400).send(badRequest('Error occured in connection'))
+      }
+    }, (err) => {
+      res.status(400).send(badRequest(err.message))
+    })
+  })
+}
 
 exports.dbDisConnect = async (req, res) => {
-  let connectionString = req.query.connectionString;
-  let databaseType = req.query.databaseType;
-  result = await sqlDisConnect(connectionString, databaseType);
-  if (result === false) {
-    res.send(constructRetrievedResponse(result));
-  } else {
-    res.status(400).send(badRequest(result.message));
-  }
-};
+  const connectionString = req.query.connectionString
+  const databaseType = req.query.databaseType.databaseType
+  driverToUse(connectionString, databaseType).then(async (result) => {
+    sqlConnect(result, connectionString, 'close').then((success) => {
+      if (success === true) {
+        res.send(constructRetrievedResponse(success))
+      } else {
+        res.status(400).send(badRequest('Error occured in connection'))
+      }
+    }, (err) => {
+      res.status(400).send(badRequest(err.message))
+    })
+  })
+}

@@ -1,0 +1,7 @@
+{
+  "logMode": 3,
+  "logPurge": 30,
+  "debugMode": 0,
+  "fileLogLevel": "verbose",
+  "seperateLogFileForAudit": false
+}

@@ -103,7 +103,7 @@ const setUpLogs = function (config, logPath) {
   }
 
   if (_.isUndefined(lmode)) {
-    if (llevel == 'verbose') { lmode = 4 } else { lmode = 3 }
+    if (llevel === 'verbose') { lmode = 4 } else { lmode = 3 }
   }
 
   if (!fs.existsSync(LogPath)) {
@@ -127,7 +127,7 @@ const setUpLogs = function (config, logPath) {
         level: 'info'
       }))
   }
-  if (lmode === 2 || lmode == 3 || lmode === 4) {
+  if (lmode === 2 || lmode === 3 || lmode === 4) {
     // file logging
     const logFileName = config.get('logFileName') || 'system.log'
     customTransports.push(new winston.transports.DailyRotateFile({
