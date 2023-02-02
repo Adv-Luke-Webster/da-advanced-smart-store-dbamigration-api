@@ -1,14 +1,10 @@
-
 const _ = require('underscore')
 const moment = require('moment')
 const IDbEngine = require('../../modules/dbengines/IDbEngine')
 const dbEngineLib = require('../../modules/dbengines/dbEngineLib')
-const path = require('path')
-
-// Logger
-// const logger = require("v1-Smart-Logger/src/logProcessor.js");        // log processor
-// const chalk = require("chalk");
-let log
+const log = require('../../helper/logger')
+const chalk = require('chalk')
+const statements = require('../../modules/sqlStatements')
 
 // Need this to get the SQL Server data types, which we are using for all database engines.
 // const sql = require("mssql/msnodesqlv8");
@@ -16,6 +12,7 @@ const sql = require('../../modules/dbengines/SqlDataTypes.js').sqlTypes
 
 // The Oracle library (v2.0 or above).
 const oracledb = require('oracledb')
+const { reject, result } = require('underscore')
 
 // static properties:
 oracledb.autoCommit = true
@@ -26,94 +23,95 @@ let initialised = false
 let connConfig = {}
 let pool = null
 
-if (_.isUndefined(log)) {
-  // log = logger.setUpLogs(config, path.join(__dirname, "..", "..", "..", "logs"));
-}
-
 function isInitialised () {
   return initialised
 }
 
-function init (instance) {
-  // var deferred = q.defer();
-
-  try {
-    // Some examples of jdbc connection strings for Oracle.
-    // Will assume that user/password are not embedded in the jdbc connection string
-    // jdbc:oracle:thin:@<host>[:<port>]:<SID>          (archaic - the oracledb driver does not directly support SIDs, so we cannot support this.)
-    // jdbc:oracle:thin:@[//]<host>[:<port>]/<service>    (an "easy connect" string - can use this directly)
-    // jdbc:oracle:thin:@<TNSName>                      (an entry in the tnsnames.ora file (for example) - again we can use this directly)
-    // jdbc:oracle:oci:@myhost:1521:orcl                (different underlying implemnetations (thin/oci/oci8). We don't need to look at this)
-    // jdbc:oracle:oci8:@hostname_orcl
-    // jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=<host>)(PORT=<port>))(CONNECT_DATA=(SERVICE_NAME=<service>)))
-    //                                                  (tnsnames.ora style syntax. Again, we can use directly.)
-    // The general syntax of an easy connect string is:
-    // [//]host_name[:port][/service_name][:server_type][/instance_name]
-    if (instance.substr(0, 12) !== 'jdbc:oracle:' || instance.indexOf('@') < 0) {
-      const result = ({ message: 'The JDBC connection string is not valid for Oracle' })
-      return result
-    }
-
-    /*
-        Configuration Object:
-String user
-String password
-String connectString
-Boolean externalAuth
-Number stmtCacheSize
-String poolAlias
-Number poolIncrement
-Number poolMax
-Number poolMin
-Number poolPingInterval
-Number poolTimeout
-Boolean queueRequests
-Number queueTimeout
-        */
-    const connBits = instance.split(':')[3]
-    const user = connBits.split('/')[0]
-    let password = connBits.split('/')[1]
-    password = password.split('@')[0]
-    const connString = connBits.split('@')[1]
-    connConfig = {
-      user,
-      password,
-      connectString: connString,
-      poolMin: (instance.sqlConnectionPoolMin || (instance.sqlConnectionPoolMin === 0)) ? instance.sqlConnectionPoolMin : 3,
-      poolMax: instance.sqlConnectionPoolMax ? instance.sqlConnectionPoolMax : 50
-    }
-
-    if (!initialised) {
-      initialised = true
-      // log.info(chalk.blue("Connecting to Oracle..."));
-      oracledb.createPool(connConfig)
-        .then(function (pl) {
-          pool = pl
-          // log.info(chalk.blue("Connected to Oracle OK"));
-          process.on('beforeExit', function () {
-            // log.info(chalk.blue("Closing connections to Oracle"));
-            pool.close()
-            initialised = false
-          })
-          deferred.resolve()
-        })
-        .catch(function (err) {
-          initialised = false
-          deferred.reject(err)
-          // log.error(chalk.red("Error Connecting to Oracle:"));
-          // log.error(chalk.red(JSON.stringify(err)));
-        })
-    }
-  } catch (e) {
-    // deferred.reject(e);
+function getConfig (connString, err) {
+  const connObject = connString.split(';')
+  // Some examples of jdbc connection strings for Oracle.
+  // Will assume that user/password are not embedded in the jdbc connection string
+  // jdbc:oracle:thin:@<host>[:<port>]:<SID>          (archaic - the oracledb driver does not directly support SIDs, so we cannot support this.)
+  // jdbc:oracle:thin:@[//]<host>[:<port>]/<service>    (an "easy connect" string - can use this directly)
+  // jdbc:oracle:thin:@<TNSName>                      (an entry in the tnsnames.ora file (for example) - again we can use this directly)
+  // jdbc:oracle:oci:@myhost:1521:orcl                (different underlying implemnetations (thin/oci/oci8). We don't need to look at this)
+  // jdbc:oracle:oci8:@hostname_orcl
+  // jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=<host>)(PORT=<port>))(CONNECT_DATA=(SERVICE_NAME=<service>)))
+  //                                                  (tnsnames.ora style syntax. Again, we can use directly.)
+  // The general syntax of an easy connect string is:
+  // [//]host_name[:port][/service_name][:server_type][/instance_name]
+  if (connString.substr(0, 12) !== 'jdbc:oracle:' || connString.indexOf('@') < 0) {
+    return ({ message: 'The JDBC connection string is not valid for Oracle Server' })
   }
-
-  return deferred.promise
+  const connBits = connString.split(':')[3]
+  const user = connBits.split('/')[0]
+  let password = connBits.split('/')[1]
+  password = password.split('@')[0]
+  connString = connBits.split('@')[1]
+  connConfig = {
+    user,
+    password,
+    connectString: connString,
+    poolMin: (connString.sqlConnectionPoolMin || (connString.sqlConnectionPoolMin === 0)) ? connString.sqlConnectionPoolMin : 3,
+    poolMax: connString.sqlConnectionPoolMax ? connString.sqlConnectionPoolMax : 50
+  }
 }
 
-function initConnection () {
-  return pool.getConnection().then(function (conn) {
-    return { conn }
+function init (connString, action) {
+  return new Promise((resolve, reject) => {
+    try {
+      validConfig = getConfig(connString)
+      if (validConfig?.message) {
+        reject(validConfig.message)
+      }
+
+      if (action === 'open') {
+        oracledb.createPool(connConfig)
+          .then(function (pl) {
+            pool = pl
+            log.info(chalk.blue('Connected to Oracle OK'))
+            process.on('beforeExit', function () {
+              log.info(chalk.blue('Closing connections to Oracle'))
+              pool.close()
+              initialised = false
+            })
+            resolve()
+          })
+          .catch(function (err) {
+            initialised = false
+            reject(err.message)
+            log.error(chalk.red('Error Connecting to Oracle:'))
+            log.error(chalk.red(JSON.stringify(err.message)))
+          })
+      } else if (action === 'close') {
+        const pool = new mssql.ConnectionPool(connConfig)
+        pool.close(function (err) {
+          if (err) {
+            initialised = false
+            reject(err.message)
+            log.error(chalk.red('Error connecting to Oracle Server:'))
+            log.error(chalk.red(err))
+          } else {
+            resolve(true)
+            log.info(chalk.blue('Oracle Server connection established.'))
+          }
+        })
+      }
+    } catch (error) {
+      reject(error)
+      log.error(chalk.red('Error connecting to Oracle Server:' + error))
+    }
+  })
+}
+
+function sqlExec (connString, st) {
+  sqlStatement = st
+  ct = connString
+  return new Promise((resolve, reject) => {
+    validConfig = getConfig(connString)
+    if (validConfig.message) {
+      reject(validConfig.message)
+    }
   })
 }
 
@@ -123,144 +121,6 @@ function cleanup (context, success) {
     context.conn = null
   }
   return q(context.data)
-}
-
-function tableOrColumnExists (context, tableName, columnName, noPrefix) {
-  const deferred = q.defer()
-
-  try {
-    if (!noPrefix) {
-      tableName = 'QQQ_' + tableName
-    }
-
-    const owner = config.get('DatabaseInstances')[0].jdbcUser
-    context.conn.execute('select TABLE_NAME from ALL_TABLES' +
-                "\n where  TABLESPACE_NAME = 'USERS'" +
-                '\n and OWNER = :owner' +
-                '\n and TABLE_NAME = :tableName',
-    { tableName: tableName.toUpperCase(), owner: owner.toUpperCase() })
-      .then(function (result) {
-        const ret = { tableExists: false, columnExists: false }
-        if (result && result.rows.length > 0) {
-          ret.tableExists = true
-
-          if (typeof (columnName) !== 'undefined' && columnName) {
-            context.conn.execute('select COLUMN_NAME from ALL_TAB_COLUMNS' +
-                            '\n where TABLE_NAME = :tableName' +
-                            '\n and COLUMN_NAME = :columnName' +
-                            '\n and OWNER = :owner',
-            { tableName: tableName.toUpperCase(), columnName: columnName.toUpperCase(), owner: owner.toUpperCase() })
-              .then(function (result) {
-                if (result && result.rows.length > 0) {
-                  ret.columnExists = true
-                }
-                context.data = ret
-                deferred.resolve(context)
-              })
-              .catch(function (err) {
-                deferred.reject(err)
-                log.error(chalk.red(err))
-              })
-          } else {
-            context.data = ret
-            deferred.resolve(context)
-          }
-        } else {
-          context.data = ret
-          deferred.resolve(context)
-        }
-      })
-      .catch(function (err) {
-        deferred.reject(err)
-        log.error(chalk.red(err))
-      })
-  } catch (e) {
-    deferred.reject(e)
-  }
-
-  return deferred.promise
-  /*
-select table_name from information_schema.tables where table_name = 'qqq__blobs' and table_schema = 'public'
-select column_name from information_schema.columns where table_name = 'qqq__blobs' and column_name = 'location' and table_schema = 'public'
-    */
-}
-
-function indexExists (context, tableName, columns, noPrefix) {
-  const deferred = q.defer()
-  const owner = config.get('DatabaseInstances')[0].jdbcUser
-  try {
-    const ret = { tableExists: false, indexExists: false, isUnique: false, indexName: '', indexAllowed: true }
-
-    tableOrColumnExists(context, tableName, columns[0], noPrefix).then(function (texists) {
-      if (texists.data.tableExists && texists.data.columnExists) {
-        ret.tableExists = true
-
-        if (!noPrefix) {
-          tableName = 'QQQ_' + tableName
-        }
-
-        const sSQL = 'select i.INDEX_NAME as "index_name",' +
-                    '\n ic.COLUMN_NAME as "name"' +
-                    '\n from ALL_INDEXES i' +
-                    '\n join ALL_IND_COLUMNS ic' +
-                    '\n     on i.INDEX_NAME = ic.INDEX_NAME' +
-                    '\n where i.TABLE_NAME = :tableName' +
-                    '\n and i.TABLE_OWNER = :owner' +
-                    '\n order by i.INDEX_NAME'
-
-        return context.conn.execute(sSQL, { tableName: tableName.toUpperCase(), owner: owner.toUpperCase() }).then(function (results) {
-          context.data = dbEngineLib.buildIndexRet(ret, results.rows, columns)
-          deferred.resolve(context)
-        })
-      } else {
-        ret.indexAllowed = false
-        context.data = ret
-        deferred.resolve(context)
-      }
-    })
-      .catch(function (err) {
-        deferred.reject(err)
-        log.error(chalk.red(err))
-      })
-  } catch (e) {
-    deferred.reject(e)
-  }
-
-  return deferred.promise
-}
-
-function createIndex (context, tableName, columns, indexName, isUnique, noPrefix) {
-  const deferred = q.defer()
-
-  try {
-    if (!noPrefix) {
-      tableName = 'QQQ_' + tableName
-    }
-
-    if (indexName.length > 30) {
-      indexName = indexName.substr(0, 28) + indexName.length
-    }
-
-    log.info('Creating index on ' + tableName + ' (' + columns.join(',') + ')')
-
-    const sSQL = 'create ' + (isUnique ? 'unique ' : '') + 'index ' + indexName + ' on ' + tableName + ' (' + (columns.join(',')) + ')'
-
-    context.conn.execute(sSQL).then(function () {
-      deferred.resolve(context)
-      log.info('Index created on ' + tableName + ' (' + columns.join(',') + ')')
-    })
-      .catch(function (err) {
-        deferred.reject(err)
-        log.error('SQL Error creating index on ' + tableName + ' (' + columns.join(',') + '):')
-        log.error(chalk.red(err))
-      })
-  } catch (e) {
-    deferred.reject(e)
-    log.error('Error creating index on ' + tableName + ' (' + columns.join(',') + '):')
-    log.error(chalk.red(e))
-  }
-
-  return deferred.promise
 }
 
 function _oracleParams (params) {
@@ -428,50 +288,6 @@ function simpleExec (context, st) {
   return deferred.promise
 }
 
-function batchTxnExec (context, sts) {
-  const deferred = q.defer()
-
-  try {
-    const psts = []
-    const bopts = { autoCommit: false }
-
-    _.each(sts, function (st, iX) {
-      const bpar = _oracleParams(st.params)
-      psts.push(context.conn.execute(st.statement, bpar, bopts))
-    })
-    // psts.push();
-
-    q.all(psts)
-      .then(function (results) {
-        return context.conn.commit().then(function () {
-          context.data = _.map(results, function (result) {
-            return {
-              recordset: (result && result.rows) ? result.rows : [],
-              rowsAffected: result ? (result.rows ? result.rows.length : result.rowsAffected) : 0
-            }
-          })
-
-          deferred.resolve(context)
-        })
-      })
-      .catch(function (err) {
-        try {
-          context.conn.rollback()
-        } catch (e) {}
-
-        deferred.reject(err)
-        log.error(chalk.red(err))
-      })
-  } catch (e) {
-    try {
-      context.conn.rollback()
-    } catch (e) {}
-    deferred.reject(e)
-  }
-
-  return deferred.promise
-}
-
 function resolveSQL (sqlDef) {
   return dbEngineLib.resolveSQL(sqlDef, 'oracle', 'QQQ').then(function (st) {
     const rx = /\@([A-Za-z0-9\$\#_]+)/g // Find SQL identifier words starting with @ so we can change to oracle ":param" syntax
@@ -492,14 +308,7 @@ module.exports = new IDbEngine.DbEngine(
   { engine: 'oracle', table_prefix: 'QQQ_' },
   isInitialised,
   init,
-  initConnection,
-  // prepare,
-  // executeFetchList,
-  cleanup,
-  tableOrColumnExists,
-  indexExists,
-  createIndex,
+  sqlExec,
   simpleExec,
-  batchTxnExec,
   resolveSQL
 )

@@ -21,10 +21,10 @@ const coloredLogger = {
     log.info(chalk.blue(text))
   },
   error: function (text) {
-    log.info(chalk.red(text))
+    log.error(chalk.red(text))
   },
   warn: function (text) {
-    log.info(chalk.yellow(text))
+    log.warning(chalk.yellow(text))
   },
   verbose: function (text) {
     log.info(chalk.magenta(text))

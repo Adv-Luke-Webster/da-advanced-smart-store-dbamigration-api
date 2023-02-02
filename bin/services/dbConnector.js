@@ -44,6 +44,10 @@ exports.dbConnect = (req, res) => {
   const connectionString = req.query.connectionString
   const databaseType = req.query.databaseType.databaseType
   driverToUse(connectionString, databaseType).then(async (result) => {
+    if(_.isUndefined(result.engineDetails)){
+      res.status(400).send(badRequest(JSON.stringify(result.message)))
+      return
+    }
     sqlConnect(result, connectionString, 'open').then((success) => {
       if (success === true) {
         res.send(constructRetrievedResponse(success))
@@ -51,7 +55,7 @@ exports.dbConnect = (req, res) => {
         res.status(400).send(badRequest('Error occured in connection'))
       }
     }, (err) => {
-      res.status(400).send(badRequest(err.message))
+      res.status(400).send(badRequest(err))
     })
   })
 }

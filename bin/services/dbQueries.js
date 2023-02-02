@@ -44,6 +44,10 @@ exports.getTables = async (req, res) => {
     const databaseType = req.query.databaseType
     let query
     driverToUse(connectionString, databaseType).then(async (result) => {
+      if(_.isUndefined(result.engineDetails)){
+        res.status(400).send(badRequest(JSON.stringify(result.message)))
+        return
+      }
       getTables(result, connectionString, 'open').then(
         (result) => {
           if (result) {

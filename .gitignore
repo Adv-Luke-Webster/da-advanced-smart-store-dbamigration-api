@@ -2,3 +2,4 @@
 /node_modules
 bin/services/dbMimeReader.js
 bin/services/index.js
+bin/logs
