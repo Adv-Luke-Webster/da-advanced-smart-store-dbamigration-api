@@ -1,7 +1,4 @@
-const _ = require('underscore')
-const moment = require('moment')
 const IDbEngine = require('../../modules/dbengines/IDbEngine')
-const path = require('path')
 const log = require('../../helper/logger')
 const chalk = require('chalk')
 const statements = require('../../modules/sqlStatements')
@@ -10,16 +7,8 @@ const mssql = require('mssql')
 
 const sqlTypes = require('../../modules/dbengines/SqlDataTypes.js').sqlTypes
 
-if (_.isUndefined(log)) {
-  log = logger.setUpLogs(
-    config,
-    path.join(__dirname, '..', '..', '..', 'logs')
-  )
-}
-
 let initialised = false
 let connConfig = {}
-pool = null
 
 function isInitialised () {
   return initialised
@@ -33,7 +22,7 @@ function getConfig (connString) {
   let _username
   let _password
 
-  if (connString.substr(0, 17) != 'jdbc:sqlserver://') {
+  if (connString.substr(0, 17) !== 'jdbc:sqlserver://') {
     return {
       message: 'The JDBC connection string is not valid for SQL Server'
     }
@@ -68,7 +57,7 @@ function getConfig (connString) {
     if (connObject[i]) {
       const nvp = connObject[i].split('=')
       let boolValue
-      if (nvp && nvp.length == 2) {
+      if (nvp && nvp.length === 2) {
         switch (nvp[0].toLowerCase()) {
           case 'databasename':
           case 'database':
@@ -91,7 +80,7 @@ function getConfig (connString) {
             break
 
           case 'integratedsecurity':
-            if (nvp[1].toLowerCase() == 'true') {
+            if (nvp[1].toLowerCase() === 'true') {
               connConfig.options.trustedConnection = true
               connConfig.user = ''
               connConfig.password = ''
@@ -160,8 +149,7 @@ function sqlExec (connString, st) {
       })
     } catch (error) {
       reject(error)
-      log.error(chalk.red('Error connecting to SQL Server:'))
-      log.error(chalk.red(err))
+      log.error(chalk.red('Error connecting to SQL Server:' + error))
     }
   })
 }
@@ -206,62 +194,9 @@ function init (connString, action) {
       }
     } catch (error) {
       reject(error)
-      log.error(chalk.red('Error connecting to SQL Server:'))
-      log.error(chalk.red(err))
+      log.error(chalk.red('Error connecting to SQL Server:' + error))
     }
   })
-}
-
-function _mapType (type, length) {
-  let retType = sql.VarChar
-
-  switch (type) {
-    case sqlTypes.Bit:
-      retType = sql.Bit
-      break
-    case sqlTypes.BigInt:
-      retType = sql.BigInt
-      break
-    case sqlTypes.Int:
-      retType = sql.Int
-      break
-    case sqlTypes.TinyInt:
-      retType = sql.TinyInt
-      break
-    case sqlTypes.Numeric:
-      retType = sql.Numeric
-      break
-    case sqlTypes.Money:
-      retType = sql.Money
-      break
-    case sqlTypes.Double:
-      retType = sql.Double
-      break
-    case sqlTypes.SmallInt:
-      retType = sql.SmallInt
-      break
-    case sqlTypes.Float:
-      retType = sql.Float
-      break
-    case sqlTypes.Char:
-      retType = sql.Char
-      break
-    case sqlTypes.DateTime:
-      retType = sql.DateTime
-      break
-    case sqlTypes.Decimal:
-      retType = sql.Decimal
-      break
-    case sqlTypes.Text:
-      retType = sql.Text
-      break
-  }
-
-  if (length) {
-    retType = retType(length)
-  }
-
-  return retType
 }
 
 module.exports = new IDbEngine.DbEngine(

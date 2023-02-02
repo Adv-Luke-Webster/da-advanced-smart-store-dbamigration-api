@@ -1,21 +1,15 @@
 // A set of shared utilities used by multiple databaes engine implementations
 
 const _ = require('underscore')
-// const q = require('q');
-const path = require('path')
-
-// Logger
-// TODO : Add logger back in
-// const logger = require("../../helper/logger") //log processor
-// const chalk = require("chalk");
-let log
+const log = require('../../helper/logger')
+const chalk = require('chalk')
 
 function resolveSQL (sqlDef, engineType, prefix) {
   let err = null; let ret = null
 
   try {
     if (sqlDef) {
-      var st
+      let st
       if (_.isArray(sqlDef)) {
         st = _.map(sqlDef, function (def, ix) { return def[engineType] ? def[engineType] : def.sql })
       } else {
@@ -23,9 +17,10 @@ function resolveSQL (sqlDef, engineType, prefix) {
       }
       if (!st) {
         err = { message: 'No SQL statement found' }
+        log.warning(chalk.yellow('Error connecting to SQL Server:' + err))
       } else {
-        if (_.isArray(st)) { st = _.map(st, function (def, ix) { return { statement: def.statement.replace(/\<root\>/g, prefix + '_'), params: def.params } }) } else {
-          st.statement = st.statement.replace(/\<root\>/g, prefix + '_')
+        if (_.isArray(st)) { st = _.map(st, function (def, ix) { return { statement: def.statement.replace(/<root>/g, prefix + '_'), params: def.params } }) } else {
+          st.statement = st.statement.replace(/<root>/g, prefix + '_')
         }
         ret = st
       }
@@ -33,20 +28,20 @@ function resolveSQL (sqlDef, engineType, prefix) {
       err = { message: 'No SQL statement passed' }
     }
   } catch (e) {
-    err = _.extend(e, st)
+    err = _.extend(e)
     err.message = 'Failed to resolve SQL statement: ' + err.message
   }
 
-  if (err) { return q.reject(err) } else { return q(ret) }
+  if (err) { return err } else { return ret }
 }
 
 function _checkIndex (thisId, thisColName, checkCols, track) {
   let bFound = false
-  if (thisId != track.lastIndexId) {
-    if (track.cols.length == checkCols.length) {
+  if (thisId !== track.lastIndexId) {
+    if (track.cols.length === checkCols.length) {
       let bAll = !bFound
       _.each(track.cols, function (col) {
-        if (bAll && _.isUndefined(_.find(checkCols, function (ipCol) { return (ipCol.toUpperCase() == col.toUpperCase()) }))) {
+        if (bAll && _.isUndefined(_.find(checkCols, function (ipCol) { return (ipCol.toUpperCase() === col.toUpperCase()) }))) {
           bAll = false
         }
       })

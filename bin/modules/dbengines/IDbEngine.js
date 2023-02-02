@@ -9,8 +9,6 @@ module.exports.DbEngine = function (
   fIsInitialised,
   fInit,
   fInitConnection,
-  // fPrepare,
-  // fExecuteFetchList,
   fCleanup,
   fTableOrColumnExists,
   fIndexExists,
@@ -80,8 +78,8 @@ module.exports.DbEngine = function (
   //          conn = the connection handle
   //          stmt = the prepared statement handle, or the sql string if none
   //          data = the data to be returned after cleanup. The structure of the returned data is similar to sql server, e.g.:
-  //                      recordset             array of rows from the last recordset produced by the query.
-  //                      rowsAffected          the number of rows affected by the last statement
+  //                  recordset array of rows from the last recordset produced by the query.
+  //                  rowsAffected  the number of rows affected by the last statement
   //      Reject(err)
   // this.executeFetchList = fExecuteFetchList;
 
