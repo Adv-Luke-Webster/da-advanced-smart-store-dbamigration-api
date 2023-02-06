@@ -3,3 +3,4 @@
 bin/services/dbMimeReader.js
 bin/services/index.js
 bin/logs
+bin/services/BlobMims/BLOB.mim
